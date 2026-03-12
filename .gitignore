@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Local env / temp
+.tmp/
+pytest_tmp_*/
+pytest-cache-files-*/
+
+# Analyzer outputs
+out_*/
+artifacts/
+unpacked/
+
+# Data files
+*.zip
+*.log
+.env
