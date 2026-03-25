@@ -1,29 +1,39 @@
 from __future__ import annotations
 
 
-OLLAMA_PROMPT_TEMPLATE = """You are a Blue Team assistant.
-You receive an already detected finding.
-Do not add new facts and do not change severity/category.
+OLLAMA_PROMPT_TEMPLATE = """Ты помощник Blue Team.
+Тебе передан уже найденный finding.
+Нельзя добавлять новые факты, менять severity или category.
 
-Only:
-1) Explain risk using provided evidence.
-2) Propose concise remediation wording.
+Задача:
+1) Кратко объясни риск, опираясь только на переданные evidence.
+2) Предложи конкретные шаги remediation.
 
-Return exactly two sections:
-- Explanation
-- Remediation
+Требования к ответу:
+- Пиши по-русски, но технические термины (ACL, DCSync, MITRE ATT&CK и т.п.) оставляй на английском.
+- Не выдумывай детали, которых нет в контексте.
+- Если данных мало, так и укажи в explanation.
+- remediation: 2-5 коротких шагов, без воды.
 
-Finding context (JSON):
+Верни ТОЛЬКО валидный JSON-объект ровно с этими ключами:
+{{
+  "explanation": "краткий абзац",
+  "remediation": ["шаг 1", "шаг 2"]
+}}
+
+Никакого markdown и текста вне JSON.
+
+Контекст finding (JSON):
 {finding_json}
 """
 
 
 HTML_REPORT_TEMPLATE = """<!doctype html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AD Analyzer Report</title>
+  <title>Отчёт AD Analyzer</title>
   <style>
     body { font-family: Segoe UI, sans-serif; margin: 2rem; background: #f4f6f8; color: #111; }
     h1, h2, h3 { margin-bottom: 0.5rem; }
@@ -36,12 +46,12 @@ HTML_REPORT_TEMPLATE = """<!doctype html>
   </style>
 </head>
 <body>
-  <h1>AD Analyzer Report</h1>
+  <h1>Отчёт AD Analyzer</h1>
   <div class="card">
-    <h2>Summary</h2>
-    <p>Total findings: <strong>{{ summary.total }}</strong></p>
-    <p>Suppressed by allowlist: <strong>{{ summary.suppressed or 0 }}</strong></p>
-    <p>Avg risk score: <strong>{{ summary.avg_risk_score }}</strong></p>
+    <h2>Сводка</h2>
+    <p>Всего находок: <strong>{{ summary.total }}</strong></p>
+    <p>Подавлено allowlist: <strong>{{ summary.suppressed or 0 }}</strong></p>
+    <p>Средний risk score: <strong>{{ summary.avg_risk_score }}</strong></p>
     <ul>
       <li>CRITICAL: {{ summary.by_severity.CRITICAL }}</li>
       <li>HIGH: {{ summary.by_severity.HIGH }}</li>
@@ -52,9 +62,9 @@ HTML_REPORT_TEMPLATE = """<!doctype html>
   </div>
 
   <div class="card">
-    <h2>Findings Table</h2>
+    <h2>Таблица находок</h2>
     <table>
-      <thead><tr><th>ID</th><th>Severity</th><th>Risk</th><th>Priority</th><th>MITRE</th><th>Title</th></tr></thead>
+      <thead><tr><th>ID</th><th>Критичность</th><th>Risk</th><th>Приоритет</th><th>MITRE</th><th>Заголовок</th></tr></thead>
       <tbody>
       {% for f in findings %}
         <tr><td><code>{{ f.id }}</code></td><td>{{ f.severity }}</td><td>{{ f.risk_score }}</td><td>{{ f.remediation_priority }}</td><td>{% for m in f.mitre_attack %}<code>{{ m.technique_id }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</td><td>{{ f.title }}</td></tr>
@@ -67,7 +77,7 @@ HTML_REPORT_TEMPLATE = """<!doctype html>
   <div class="card">
     <h3>{{ f.title }}</h3>
     <p><span class="badge {{ f.severity }}">{{ f.severity }}</span> {{ f.category }}</p>
-    <p><strong>Risk score:</strong> {{ f.risk_score }} | <strong>Priority:</strong> {{ f.remediation_priority }}</p>
+    <p><strong>Risk score:</strong> {{ f.risk_score }} | <strong>Приоритет:</strong> {{ f.remediation_priority }}</p>
     <p><strong>MITRE ATT&CK:</strong></p>
     <ul>
       {% for m in f.mitre_attack %}
@@ -77,15 +87,15 @@ HTML_REPORT_TEMPLATE = """<!doctype html>
       <li>n/a</li>
       {% endif %}
     </ul>
-    <p><strong>Why risky:</strong> {{ f.why_risky }}</p>
-    <p><strong>Evidence:</strong></p>
+    <p><strong>Почему это риск:</strong> {{ f.why_risky }}</p>
+    <p><strong>Доказательства:</strong></p>
     <pre>{{ f.evidence | tojson(indent=2) }}</pre>
-    <p><strong>How to verify:</strong></p>
+    <p><strong>Как проверить:</strong></p>
     <ul>{% for i in f.how_to_verify %}<li>{{ i }}</li>{% endfor %}</ul>
-    <p><strong>Fix plan:</strong></p>
+    <p><strong>План исправления:</strong></p>
     <ol>{% for i in f.fix_plan %}<li>{{ i }}</li>{% endfor %}</ol>
     {% if f.llm_explanation %}
-    <p><strong>LLM explanation:</strong></p>
+    <p><strong>Пояснение LLM:</strong></p>
     <pre>{{ f.llm_explanation }}</pre>
     {% endif %}
   </div>

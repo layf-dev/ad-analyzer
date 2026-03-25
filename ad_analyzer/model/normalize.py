@@ -104,6 +104,10 @@ def _extract_node_attrs(record: dict[str, Any]) -> dict[str, Any]:
     attrs["distinguishedName"] = _ci_get(
         source, "distinguishedName", _ci_get(source, "distinguishedname")
     )
+    attrs["primaryGroupID"] = _ci_get(source, "primaryGroupID", _ci_get(source, "primarygroupid"))
+    attrs["userAccountControl"] = _ci_get(
+        source, "userAccountControl", _ci_get(source, "useraccountcontrol")
+    )
     return attrs
 
 
@@ -311,4 +315,3 @@ def normalize_datasets(datasets: dict[str, list[dict[str, Any]]], warnings: list
 
 def extract_data_records(raw_payload: Any) -> list[dict[str, Any]]:
     return _extract_items(raw_payload)
-

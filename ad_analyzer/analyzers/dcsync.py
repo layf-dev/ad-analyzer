@@ -19,14 +19,26 @@ DCSYNC_RIGHTS = {
 def _is_probable_dc_account(graph: nx.MultiDiGraph, principal_id: str) -> bool:
     data = graph.nodes.get(principal_id, {})
     node_type = str(data.get("type", "")).upper()
-    name = str(data.get("name", "")).upper()
+    if node_type != "COMPUTER":
+        return False
     attrs = data.get("attrs") or {}
     dn = str(attrs.get("distinguishedName", "")).upper()
 
-    if node_type == "COMPUTER" and "DOMAIN CONTROLLERS" in dn:
+    # Prefer conservative classification: mark as probable DC only on strong signals.
+    if "OU=DOMAIN CONTROLLERS" in dn:
         return True
-    if node_type == "COMPUTER" and ("DC" in name or name.endswith("$")):
+
+    primary_group = str(attrs.get("primaryGroupID", "")).strip()
+    if primary_group == "516":
         return True
+
+    user_account_control = attrs.get("userAccountControl", attrs.get("useraccountcontrol"))
+    try:
+        if user_account_control is not None and int(user_account_control) & 0x2000:
+            return True
+    except (TypeError, ValueError):
+        pass
+
     return False
 
 
@@ -57,7 +69,7 @@ class DCSyncAnalyzer(Analyzer):
 
             findings.append(
                 create_finding(
-                    title=f"DCSync-capable principal detected: {src_name} -> {dst_name}",
+                    title=f"Обнаружен субъект с DCSync-возможностями: {src_name} -> {dst_name}",
                     severity=severity,
                     category="DCSYNC",
                     affected_objects=[node_to_affected(graph, src), node_to_affected(graph, dst)],
@@ -74,20 +86,19 @@ class DCSyncAnalyzer(Analyzer):
                         raw_refs=sorted(refs[(src, dst)]),
                     ),
                     why_risky=(
-                        "DCSync rights can expose NTDS secrets (including privileged account hashes) "
-                        "and may lead to full domain compromise."
+                        "Права DCSync могут раскрыть секреты NTDS (включая хэши привилегированных учётных записей) "
+                        "и привести к полной компрометации домена."
                     ),
                     how_to_verify=[
-                        "Review replication rights delegated on the domain object.",
-                        "Confirm principal is an approved DC or strictly required service.",
+                        "Проверьте, кому делегированы права репликации на объекте домена.",
+                        "Подтвердите, что субъект — утверждённый DC или строго необходимый сервис.",
                     ],
                     fix_plan=[
-                        "Remove replication rights from non-required principals.",
-                        "Keep DCSync rights only for domain controllers and approved services.",
-                        "Enable monitoring for replication and domain ACL changes.",
+                        "Удалите права репликации у субъектов, которым они не нужны.",
+                        "Оставьте права DCSync только контроллерам домена и утверждённым сервисам.",
+                        "Включите мониторинг репликации и изменений ACL домена.",
                     ],
-                    notes=f"DCSync rights: {', '.join(sorted(rights))}",
+                    notes=f"Права DCSync: {', '.join(sorted(rights))}",
                 )
             )
         return findings
-

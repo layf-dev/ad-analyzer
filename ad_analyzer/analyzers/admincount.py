@@ -27,7 +27,7 @@ class AdminCountAnalyzer(Analyzer):
 
             findings.append(
                 create_finding(
-                    title=f"adminCount=true set on {node_type}: {node_name}",
+                    title=f"Установлен adminCount=true для {node_type}: {node_name}",
                     severity=severity,
                     category="ADMINCOUNT",
                     affected_objects=[node_to_affected(graph, node_id)],
@@ -37,19 +37,18 @@ class AdminCountAnalyzer(Analyzer):
                         raw_refs=["Properties.adminCount", "Properties.admincount"],
                     ),
                     why_risky=(
-                        "adminCount often indicates AdminSDHolder-protected objects. "
-                        "These objects are frequently tied to elevated privileges and ACL inheritance exceptions."
+                        "adminCount часто указывает на объекты под защитой AdminSDHolder. "
+                        "Такие объекты нередко связаны с повышенными привилегиями и отключённым наследованием ACL."
                     ),
                     how_to_verify=[
-                        "Check adminCount value directly in AD for the object.",
-                        "Review object ACL inheritance and privileged group membership.",
+                        "Проверьте значение adminCount у объекта напрямую в AD.",
+                        "Проверьте наследование ACL и членство объекта в привилегированных группах.",
                     ],
                     fix_plan=[
-                        "Review whether protected status is still required.",
-                        "Remove object from privileged groups if no longer needed.",
-                        "Restore ACL inheritance after privilege cleanup.",
+                        "Проверьте, нужен ли объекту защищённый статус сейчас.",
+                        "Удалите объект из привилегированных групп, если это больше не требуется.",
+                        "После очистки прав восстановите наследование ACL.",
                     ],
                 )
             )
         return findings
-

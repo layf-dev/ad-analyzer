@@ -171,6 +171,7 @@
 - `artifacts/summary.json` — агрегированная сводка
 - `artifacts/report.md` — человекочитаемый отчёт
 - `artifacts/report.html` — опционально (`--html`)
+- `artifacts/report.pdf` — опционально (`--pdf`)
 
 Для сравнения запусков:
 
@@ -188,17 +189,27 @@ ad-analyzer analyze <path_to_zip> --out <out_dir> [options]
 Основные опции:
 
 - `--html` — сгенерировать `report.html`
-- `--open` — открыть HTML в браузере (если он создан)
+- `--pdf` — сгенерировать `report.pdf`
+- `--open` — открыть отчёт (сначала HTML, если есть, иначе PDF)
 - `--allowlist <file.json>` — применить исключения
 - `--risk-config <file.json>` — переопределить веса скоринга
 - `--ollama` — добавить LLM-пояснения
 - `--ollama-model <name>` — модель Ollama (по умолчанию `llama3.1:8b`)
+- `--ollama-host <url>` — хост Ollama (по умолчанию `http://127.0.0.1:11434`)
+- `--ollama-timeout <sec>` — timeout запроса к Ollama
+- `--ollama-min-severity <LOW|MEDIUM|HIGH|CRITICAL>` — объяснять не все findings, а начиная с выбранной критичности
+- `--ollama-max-findings <n>` — лимит числа findings для LLM
+- `--ollama-max-consecutive-failures <n>` — fail-fast: остановить LLM-этап после `n` подряд неуспешных запросов
+- `--strict-input` — строгий режим входных данных (падать при критичных проблемах качества данных)
 - `--verbose` — подробные логи
+
+По умолчанию CLI выводит краткий режим (основной прогресс и итог).  
+Полный список предупреждений и детальные сообщения включаются через `--verbose`.
 
 Пример:
 
 ```bash
-ad-analyzer analyze sharphound.zip --out ./out --html --allowlist ./allowlist.json
+ad-analyzer analyze sharphound.zip --out ./out --html --pdf --allowlist ./allowlist.json --ollama --ollama-min-severity HIGH --ollama-max-findings 50
 ```
 
 ### 2. Перегенерация отчётов из findings.json
@@ -209,7 +220,15 @@ ad-analyzer report <artifacts_dir> [options]
 
 Опции:
 
+- `--ollama`
+- `--ollama-model <name>`
+- `--ollama-host <url>`
+- `--ollama-timeout <sec>`
+- `--ollama-min-severity <LOW|MEDIUM|HIGH|CRITICAL>`
+- `--ollama-max-findings <n>`
+- `--ollama-max-consecutive-failures <n>`
 - `--html`
+- `--pdf`
 - `--open`
 - `--allowlist <file.json>`
 - `--risk-config <file.json>`
@@ -303,14 +322,17 @@ ad-analyzer version
 
 При включении `--ollama`:
 
-- для каждого finding формируется структурированный prompt
+- перед запуском делается preflight-проверка доступности локального Ollama и наличия модели
+- для finding формируется структурированный prompt (JSON-контекст)
 - модель должна объяснить риск и remediation без добавления новых фактов
-- ответ сохраняется в `llm_explanation`
+- по умолчанию объясняются все findings, но можно ограничить по `--ollama-min-severity` и `--ollama-max-findings`
+- при серии таймаутов/ошибок можно включить fail-fast через `--ollama-max-consecutive-failures` (по умолчанию 3)
+- ответ сохраняется в `llm_explanation` в стабильном формате `Explanation/Remediation`
 
 Если Ollama недоступна:
 
 - анализ не падает
-- просто пишется warning в лог
+- LLM-этап пропускается с понятным сообщением
 
 ## Технологии и почему именно они
 
@@ -349,13 +371,14 @@ pip install -e .[dev]
 2. Запустите анализ:
 
 ```bash
-ad-analyzer analyze sharphound.zip --out ./out --html
+ad-analyzer analyze sharphound.zip --out ./out --html --pdf
 ```
 
 3. Откройте:
 
 - `./out/artifacts/report.md`
 - `./out/artifacts/report.html`
+- `./out/artifacts/report.pdf`
 - `./out/artifacts/findings.json`
 
 ## Тестирование проекта
@@ -384,4 +407,3 @@ pytest -q tests
 
 - Лицензия: `MIT`
 - Текущая версия: `0.1.0`
-

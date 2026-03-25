@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from ad_analyzer.config import RiskScoringConfig
 from ad_analyzer.model.types import AffectedObject, Evidence, Severity, create_finding
 from ad_analyzer.report.allowlist import apply_allowlist
 from ad_analyzer.report.diff import compare_findings
 from ad_analyzer.report.mitre import enrich_findings_with_mitre
 from ad_analyzer.report.prioritize import enrich_findings_with_priority
+from ad_analyzer.report.render_html import render_html_report
+from ad_analyzer.report.render_json import build_summary
+from ad_analyzer.report.render_pdf import render_pdf_report
 
 
 def _mk_finding(title: str, severity: Severity, category: str, object_id: str):
@@ -134,3 +139,28 @@ def test_diff_matches_equivalent_findings_when_edge_order_changes() -> None:
     assert len(diff.new) == 0
     assert len(diff.resolved) == 0
     assert len(diff.persistent) == 1
+
+
+def test_pdf_report_is_generated(tmp_path: Path) -> None:
+    finding = _mk_finding("pdf finding", Severity.HIGH, "ACL", "U1")
+    enrich_findings_with_mitre([finding])
+    enrich_findings_with_priority([finding])
+    summary = build_summary([finding], suppressed_count=0)
+
+    pdf_path = render_pdf_report([finding], summary, tmp_path)
+
+    assert pdf_path.exists()
+    payload = pdf_path.read_bytes()
+    assert payload.startswith(b"%PDF-")
+    assert b"%%EOF" in payload[-1024:]
+
+
+def test_html_report_escapes_untrusted_fields(tmp_path: Path) -> None:
+    finding = _mk_finding("<script>alert(1)</script>", Severity.HIGH, "ACL", "U1")
+    summary = build_summary([finding], suppressed_count=0)
+
+    html_path = render_html_report([finding], summary, tmp_path)
+    html = html_path.read_text(encoding="utf-8")
+
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+    assert "<script>alert(1)</script>" not in html

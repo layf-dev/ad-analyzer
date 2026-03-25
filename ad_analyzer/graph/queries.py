@@ -40,8 +40,13 @@ def member_of_graph(graph: nx.MultiDiGraph) -> nx.DiGraph:
     return g
 
 
-def shortest_membership_path(graph: nx.MultiDiGraph, src_id: str, dst_id: str) -> list[str] | None:
-    g = member_of_graph(graph)
+def shortest_membership_path(
+    graph: nx.MultiDiGraph,
+    src_id: str,
+    dst_id: str,
+    membership_graph: nx.DiGraph | None = None,
+) -> list[str] | None:
+    g = membership_graph if membership_graph is not None else member_of_graph(graph)
     try:
         return nx.shortest_path(g, src_id, dst_id)
     except (nx.NetworkXNoPath, nx.NodeNotFound):
@@ -73,4 +78,3 @@ def iter_acl_edges(graph: nx.MultiDiGraph) -> list[tuple[str, str, dict[str, Any
         if data.get("rel_type") == "ACL_RIGHT":
             rows.append((src, dst, data))
     return rows
-

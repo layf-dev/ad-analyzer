@@ -55,7 +55,7 @@ class DangerousAclAnalyzer(Analyzer):
 
             findings.append(
                 create_finding(
-                    title=f"Dangerous ACL rights: {src_name} -> {dst_name}",
+                    title=f"Опасные ACL-права: {src_name} -> {dst_name}",
                     severity=severity,
                     category="ACL",
                     affected_objects=[node_to_affected(graph, src), node_to_affected(graph, dst)],
@@ -72,19 +72,18 @@ class DangerousAclAnalyzer(Analyzer):
                         raw_refs=sorted(raw_refs[(src, dst)]),
                     ),
                     why_risky=(
-                        "Dangerous ACL rights can allow takeover of target objects and privilege escalation."
+                        "Опасные ACL-права могут позволить захват целевых объектов и повышение привилегий."
                     ),
                     how_to_verify=[
-                        "Inspect target ACL using BloodHound, PowerView, or Get-Acl.",
-                        "Confirm whether principal truly requires each delegated right.",
+                        "Проверьте ACL целевого объекта через BloodHound, PowerView или Get-Acl.",
+                        "Подтвердите, что субъекту действительно нужны все делегированные права.",
                     ],
                     fix_plan=[
-                        "Remove excessive ACL rights from principal on the target object.",
-                        "Use dedicated least-privilege delegation groups.",
-                        "Schedule periodic ACL review for critical AD objects.",
+                        "Удалите избыточные ACL-права у субъекта на целевом объекте.",
+                        "Используйте отдельные группы делегирования по принципу least privilege.",
+                        "Внедрите регулярный пересмотр ACL для критичных объектов AD.",
                     ],
-                    notes=f"Detected rights: {', '.join(sorted(rights))}",
+                    notes=f"Обнаруженные права: {', '.join(sorted(rights))}",
                 )
             )
         return findings
-

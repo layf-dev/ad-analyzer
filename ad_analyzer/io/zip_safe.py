@@ -18,6 +18,13 @@ class ZipExtractionResult:
     total_unpacked_bytes: int
 
 
+def reset_directory(path: Path) -> None:
+    """Drop directory contents to guarantee reproducible extraction output."""
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True, exist_ok=True)
+
+
 def _is_safe_destination(base_dir: Path, target_path: Path) -> bool:
     base = base_dir.resolve()
     target = target_path.resolve()
